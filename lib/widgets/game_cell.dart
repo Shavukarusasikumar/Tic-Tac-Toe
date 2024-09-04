@@ -20,7 +20,7 @@ class GameCell extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.white30),
+          border: Border.all(color: Colors.white),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -38,7 +38,7 @@ class GameCell extends StatelessWidget {
     Widget content;
     switch (cellState) {
       case CellState.x:
-        content = Icon(Icons.close, size: 60, color: Colors.amber);
+        content = Icon(Icons.close, size: 60, color: Color(0xFFFBAB57));
         break;
       case CellState.o:
         content = Icon(Icons.radio_button_unchecked, size: 60, color: Colors.pinkAccent);

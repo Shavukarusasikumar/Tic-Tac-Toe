@@ -1,65 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../models/game_state.dart';
-import '../utils/ai_logic.dart';
 
-class GameProvider extends ChangeNotifier {
- 
-
-final AudioPlayer _backgroundMusicPlayer = AudioPlayer();
-  bool _isBackgroundMusicPlaying = false;
-
-  bool get isBackgroundMusicPlaying => _isBackgroundMusicPlaying;
-  
-
-  void toggleBackgroundMusic() async {
-    if (_isBackgroundMusicPlaying) {
-      await _backgroundMusicPlayer.pause();
-    } else {
-      await _backgroundMusicPlayer.play(AssetSource('sounds/win.mp3'));
-      await _backgroundMusicPlayer.setReleaseMode(ReleaseMode.loop);
-    }
-    _isBackgroundMusicPlaying = !_isBackgroundMusicPlaying;
-    notifyListeners();
-  }
-
-
+class GameWithFriendProvider extends ChangeNotifier {
   GameState _gameState = GameState.initial();
   GameState get gameState => _gameState;
-  void resetGame() {
-    _gameState = GameState.initial();
-    notifyListeners();
-  }
+  
   List<int> _newMove = [-1, -1];
   final AudioPlayer _audioPlayer = AudioPlayer();
   bool _isSoundEnabled = true;
 
   bool get isSoundEnabled => _isSoundEnabled;
 
-
   void makeMove(int row, int col) {
     if (_gameState.board[row][col] == CellState.empty &&
-        _gameState.isPlayerTurn &&
         _gameState.status == GameStatus.playing) {
-      _updateBoard(row, col, CellState.x);
-      _gameState.playerMoves.add([row, col]);
+      CellState currentPlayer = _gameState.isPlayerTurn ? CellState.x : CellState.o;
+      _updateBoard(row, col, currentPlayer);
+      if (currentPlayer == CellState.x) {
+        _gameState.playerMoves.add([row, col]);
+      } else {
+        _gameState.aiMoves.add([row, col]); // Renaming this might be better (e.g., `opponentMoves`)
+      }
       _newMove = [row, col];
       _playSound('move');
       
-      if (_gameState.playerMoves.length == 4) {
-        _checkGameStatus(CellState.x);
+      if (_gameState.playerMoves.length == 4 || _gameState.aiMoves.length == 4) {
+        _checkGameStatus(currentPlayer);
         if (_gameState.status == GameStatus.playing) {
-          _removeFirstMove(CellState.x);
+          _removeFirstMove(currentPlayer);
         }
       } else {
-        _checkGameStatus(CellState.x);
+        _checkGameStatus(currentPlayer);
       }
-      
-      if (_gameState.status == GameStatus.playing) {
-        Future.delayed(Duration(milliseconds: 500), () {
-          _makeAIMove();
-        });
-      } else {
+
+      if (_gameState.status != GameStatus.playing) {
         _playGameEndSound();
       }
     }
@@ -73,27 +48,6 @@ final AudioPlayer _backgroundMusicPlayer = AudioPlayer();
       isPlayerTurn: !_gameState.isPlayerTurn,
     );
     notifyListeners();
-  }
-
-  void _makeAIMove() {
-    final aiMove = findBestMove(_gameState.board);
-    _updateBoard(aiMove.row, aiMove.col, CellState.o);
-    _gameState.aiMoves.add([aiMove.row, aiMove.col]);
-    _newMove = [aiMove.row, aiMove.col];
-    _playSound('move');
-    
-    if (_gameState.aiMoves.length == 4) {
-      _checkGameStatus(CellState.o);
-      if (_gameState.status == GameStatus.playing) {
-        _removeFirstMove(CellState.o);
-      }
-    } else {
-      _checkGameStatus(CellState.o);
-    }
-
-    if (_gameState.status != GameStatus.playing) {
-      _playGameEndSound();
-    }
   }
 
   void _removeFirstMove(CellState player) {
@@ -121,7 +75,6 @@ final AudioPlayer _backgroundMusicPlayer = AudioPlayer();
   }
 
   bool _checkWinner(CellState player) {
-    // Check rows, columns, and diagonals
     for (int i = 0; i < 3; i++) {
       if (_gameState.board[i][0] == player &&
           _gameState.board[i][1] == player &&
@@ -139,7 +92,12 @@ final AudioPlayer _backgroundMusicPlayer = AudioPlayer();
     return false;
   }
 
- 
+  void resetGame() {
+    _gameState = GameState.initial();
+    _newMove = [-1, -1];
+    _playSound('reset');
+    notifyListeners();
+  }
 
   void _playSound(String soundName) {
     if (_isSoundEnabled) {
@@ -150,7 +108,7 @@ final AudioPlayer _backgroundMusicPlayer = AudioPlayer();
   void _playGameEndSound() {
     if (_gameState.status == GameStatus.playerWin) {
       _playSound('win');
-    } else if (_gameState.status == GameStatus.aiWin) {
+    } else if (_gameState.status == GameStatus.aiWin) { // This might be better renamed as `opponentWin`
       _playSound('lose');
     }
   }
@@ -163,5 +121,4 @@ final AudioPlayer _backgroundMusicPlayer = AudioPlayer();
   bool isNewMove(int row, int col) {
     return _newMove[0] == row && _newMove[1] == col;
   }
-
 }
